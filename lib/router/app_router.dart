@@ -8,6 +8,7 @@ import '../screens/medical_records_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/biomarkers_screen.dart';
 import '../screens/scatter_chart_screen.dart';
+import '../screens/reminders_screen.dart';
 import '../widgets/main_navigation.dart';
 
 final GoRouter appRouter = GoRouter(
@@ -76,6 +77,14 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) => MaterialPage<void>(
         key: state.pageKey,
         child: const ScatterChartScreen(),
+      ),
+    ),
+    GoRoute(
+      path: '/reminders',
+      name: 'reminders',
+      pageBuilder: (context, state) => MaterialPage<void>(
+        key: state.pageKey,
+        child: const RemindersScreen(),
       ),
     ),
   ],

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/health_provider.dart';
+import 'providers/reminder_provider.dart'
+    ;
 import 'router/app_router.dart';
 
 void main() {
@@ -13,7 +15,10 @@ class MyHealthApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => HealthProvider())],
+      providers: [
+        ChangeNotifierProvider(create: (_) => HealthProvider()),
+        ChangeNotifierProvider(create: (_) => ReminderProvider()),
+      ],
       child: MaterialApp.router(
         title: '我的健康',
         theme: ThemeData(

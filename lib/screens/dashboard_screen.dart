@@ -27,7 +27,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('123'),
+        title: const Text('概览'),
         centerTitle: true,
         actions: [
           IconButton(
@@ -294,6 +294,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Icons.person_outline,
                       Colors.blue,
                       () => Navigator.pushNamed(context, '/profile'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildQuickActionButton(
+                      '健康提醒',
+                      Icons.notifications_active_outlined,
+                      Colors.teal,
+                      () => context.push('/reminders'),
+                    ),
+                    _buildQuickActionButton(
+                      '健康图表',
+                      Icons.monitor_heart_outlined,
+                      Colors.indigo,
+                      () => context.push('/health-charts'),
                     ),
                   ],
                 ),
