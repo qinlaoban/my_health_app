@@ -48,4 +48,20 @@ class ReminderProvider extends ChangeNotifier {
   }
 
   int get enabledCount => _reminders.where((r) => r.enabled).length;
+
+  // 计算下一次提醒（不考虑周几，仅按当天时间排序，若今天无则取明天最早）
+  Reminder? nextReminder() {
+    final now = TimeOfDay.fromDateTime(DateTime.now());
+    int toMinutes(TimeOfDay t) => t.hour * 60 + t.minute;
+    final nowMin = toMinutes(now);
+    final enabled = _reminders.where((r) => r.enabled).toList();
+    if (enabled.isEmpty) return null;
+    enabled.sort((a, b) => toMinutes(a.time).compareTo(toMinutes(b.time)));
+    // 今天还未到的第一个
+    final todayUpcoming = enabled.firstWhere(
+      (r) => toMinutes(r.time) >= nowMin,
+      orElse: () => enabled.first,
+    );
+    return todayUpcoming;
+  }
 }

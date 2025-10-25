@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/health_provider.dart';
+import '../providers/reminder_provider.dart';
 import '../widgets/health_radar_chart.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -50,6 +51,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _buildTodayHealthOverview(),
                   const SizedBox(height: 16),
                   _buildHealthTrends(),
+                  const SizedBox(height: 16),
+                  _buildRemindersSummary(context),
                   const SizedBox(height: 16),
                   _buildQuickActions(context),
                   const SizedBox(height: 16),
@@ -547,6 +550,98 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildRemindersSummary(BuildContext context) {
+    return Consumer<ReminderProvider>(
+      builder: (context, reminderProvider, child) {
+        final next = reminderProvider.nextReminder();
+        return Card(
+          elevation: 2,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.notifications_active_outlined,
+                        color: Colors.teal.shade700,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      '提醒摘要',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: () => context.push('/reminders'),
+                      icon: const Icon(Icons.settings_outlined, size: 18),
+                      label: const Text('管理'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '已开启提醒：${reminderProvider.enabledCount} 项',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                          const SizedBox(height: 6),
+                          if (next != null)
+                            Row(
+                              children: [
+                                Icon(next.icon, color: next.color, size: 18),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '下一次：${next.title} · ${_formatTime(next.time)}',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            const Text(
+                              '暂无开启的提醒',
+                              style: TextStyle(fontSize: 13, color: Colors.grey),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatTime(TimeOfDay t) {
+    final h = t.hour.toString().padLeft(2, '0');
+    final m = t.minute.toString().padLeft(2, '0');
+    return '$h:$m';
   }
 
   void _showNotificationDialog(BuildContext context) {
