@@ -37,33 +37,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
-      body: Consumer<HealthProvider>(
-        builder: (context, provider, child) {
-          return RefreshIndicator(
-            onRefresh: _refreshData,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildWelcomeCard(provider),
-                  const SizedBox(height: 16),
-                  _buildTodayHealthOverview(),
-                  const SizedBox(height: 16),
-                  _buildHealthTrends(),
-                  const SizedBox(height: 16),
-                  _buildRemindersSummary(context),
-                  const SizedBox(height: 16),
-                  _buildQuickActions(context),
-                  const SizedBox(height: 16),
-                  _buildHealthSuggestions(),
-                  const SizedBox(height: 16),
-                  _buildRecentRecords(provider),
-                ],
-              ),
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          children: [
+            Selector<HealthProvider, String>(
+              selector: (_, p) => p.userName,
+              builder: (context, userName, _) => _buildWelcomeCardName(userName),
             ),
-          );
-        },
+            const SizedBox(height: 16),
+            RepaintBoundary(child: _buildTodayHealthOverview()),
+            const SizedBox(height: 16),
+            _buildHealthTrends(),
+            const SizedBox(height: 16),
+            _buildRemindersSummary(context),
+            const SizedBox(height: 16),
+            _buildQuickActions(context),
+            const SizedBox(height: 16),
+            _buildHealthSuggestions(),
+            const SizedBox(height: 16),
+            Selector<HealthProvider, ({List<HealthRecord> healthRecords, List<MedicalRecord> medicalRecords})>(
+              selector: (_, p) => (healthRecords: p.healthRecords, medicalRecords: p.medicalRecords),
+              builder: (context, data, _) => _buildRecentRecordsData(data.healthRecords, data.medicalRecords),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -97,6 +97,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             Text(
               '$greeting，${provider.userName}',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '今天也要保持健康的生活方式哦！',
+              style: TextStyle(fontSize: 16, color: Colors.white70),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 仅依赖userName的轻量版本，配合Selector减少重建
+  Widget _buildWelcomeCardName(String userName) {
+    final hour = DateTime.now().hour;
+    String greeting;
+    if (hour < 12) {
+      greeting = '早上好';
+    } else if (hour < 18) {
+      greeting = '下午好';
+    } else {
+      greeting = '晚上好';
+    }
+
+    return Card(
+      elevation: 2,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            colors: [Colors.blue.shade400, Colors.blue.shade600],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$greeting，$userName',
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -332,28 +379,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color color,
     VoidCallback onTap,
   ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        splashColor: color.withOpacity(0.2),
+        highlightColor: color.withOpacity(0.05),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 24),
             ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              color: color,
-              fontWeight: FontWeight.w500,
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -498,6 +551,84 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 8),
                     ...provider.medicalRecords
+                        .take(3)
+                        .map(
+                          (record) => _buildRecordItem(
+                            record.title,
+                            record.description,
+                            record.date,
+                          ),
+                        ),
+                  ],
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 仅依赖记录列表的轻量版本，配合Selector减少重建
+  Widget _buildRecentRecordsData(List<HealthRecord> healthRecords, List<MedicalRecord> medicalRecords) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '最近记录',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            if (healthRecords.isEmpty && medicalRecords.isEmpty)
+              const Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.inbox_outlined, size: 48, color: Colors.grey),
+                    SizedBox(height: 8),
+                    Text(
+                      '暂无记录',
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Column(
+                children: [
+                  if (healthRecords.isNotEmpty) ...[
+                    const Text(
+                      '健康记录',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...healthRecords
+                        .take(3)
+                        .map(
+                          (record) => _buildRecordItem(
+                            '健康数据',
+                            record.notes ?? '无备注',
+                            record.date,
+                          ),
+                        ),
+                  ],
+                  if (medicalRecords.isNotEmpty) ...[
+                    if (healthRecords.isNotEmpty)
+                      const SizedBox(height: 16),
+                    const Text(
+                      '医疗记录',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...medicalRecords
                         .take(3)
                         .map(
                           (record) => _buildRecordItem(
