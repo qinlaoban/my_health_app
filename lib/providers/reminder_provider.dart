@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../models/reminder_models.dart';
 
 class ReminderProvider extends ChangeNotifier {
@@ -19,16 +21,47 @@ class ReminderProvider extends ChangeNotifier {
     ),
   ];
 
+  static const String _prefsKey = 'reminders';
+  bool _loaded = false;
+
   List<Reminder> get reminders => List.unmodifiable(_reminders);
+
+  Future<void> load() async {
+    if (_loaded) return;
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_prefsKey);
+    if (raw != null) {
+      try {
+        final list = (jsonDecode(raw) as List<dynamic>)
+            .map((e) => Reminder.fromJson(e as Map<String, dynamic>))
+            .toList();
+        _reminders
+          ..clear()
+          ..addAll(list);
+      } catch (_) {
+        // ignore parse errors, keep defaults
+      }
+    }
+    _loaded = true;
+    notifyListeners();
+  }
+
+  Future<void> _persist() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = jsonEncode(_reminders.map((r) => r.toJson()).toList());
+    await prefs.setString(_prefsKey, raw);
+  }
 
   void addReminder(Reminder reminder) {
     _reminders.add(reminder);
     notifyListeners();
+    _persist();
   }
 
   void removeReminder(String id) {
     _reminders.removeWhere((r) => r.id == id);
     notifyListeners();
+    _persist();
   }
 
   void toggleEnable(String id, bool enabled) {
@@ -36,6 +69,7 @@ class ReminderProvider extends ChangeNotifier {
     if (idx != -1) {
       _reminders[idx] = _reminders[idx].copyWith(enabled: enabled);
       notifyListeners();
+      _persist();
     }
   }
 
@@ -44,6 +78,7 @@ class ReminderProvider extends ChangeNotifier {
     if (idx != -1) {
       _reminders[idx] = _reminders[idx].copyWith(time: time);
       notifyListeners();
+      _persist();
     }
   }
 

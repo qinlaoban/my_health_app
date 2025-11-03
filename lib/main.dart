@@ -17,7 +17,7 @@ class MyHealthApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => HealthProvider()),
-        ChangeNotifierProvider(create: (_) => ReminderProvider()),
+        ChangeNotifierProvider(create: (_) => ReminderProvider()..load()),
       ],
       child: MaterialApp.router(
         title: '我的健康',

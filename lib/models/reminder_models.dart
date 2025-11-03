@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 
 /// 提醒类型
 enum ReminderType { hydration, medication, exercise, sleep }
@@ -68,6 +69,63 @@ class Reminder {
         return Colors.orange;
       case ReminderType.sleep:
         return Colors.purple;
+    }
+  }
+
+  // 序列化
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'type': _typeToString(type),
+      'time': {'hour': time.hour, 'minute': time.minute},
+      'daysOfWeek': daysOfWeek,
+      'notes': notes,
+      'enabled': enabled,
+    };
+  }
+
+  static Reminder fromJson(Map<String, dynamic> json) {
+    final t = json['time'] as Map<String, dynamic>;
+    return Reminder(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      type: _stringToType(json['type'] as String),
+      time: TimeOfDay(hour: t['hour'] as int, minute: t['minute'] as int),
+      daysOfWeek: (json['daysOfWeek'] as List<dynamic>?)
+              ?.map((e) => e as int)
+              .toList() ??
+          const [0, 1, 2, 3, 4, 5, 6],
+      notes: json['notes'] as String?,
+      enabled: json['enabled'] as bool? ?? true,
+    );
+  }
+
+  static String _typeToString(ReminderType t) {
+    switch (t) {
+      case ReminderType.hydration:
+        return 'hydration';
+      case ReminderType.medication:
+        return 'medication';
+      case ReminderType.exercise:
+        return 'exercise';
+      case ReminderType.sleep:
+        return 'sleep';
+    }
+  }
+
+  static ReminderType _stringToType(String s) {
+    switch (s) {
+      case 'hydration':
+        return ReminderType.hydration;
+      case 'medication':
+        return ReminderType.medication;
+      case 'exercise':
+        return ReminderType.exercise;
+      case 'sleep':
+        return ReminderType.sleep;
+      default:
+        return ReminderType.hydration;
     }
   }
 }
