@@ -9,6 +9,7 @@ import '../screens/profile_screen.dart';
 import '../screens/biomarkers_screen.dart';
 import '../screens/scatter_chart_screen.dart';
 import '../screens/reminders_screen.dart';
+import '../screens/settings_screen.dart';
 import '../widgets/main_navigation.dart';
 
 final GoRouter appRouter = GoRouter(
@@ -85,6 +86,14 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) => MaterialPage<void>(
         key: state.pageKey,
         child: const RemindersScreen(),
+      ),
+    ),
+    GoRoute(
+      path: '/settings',
+      name: 'settings',
+      pageBuilder: (context, state) => MaterialPage<void>(
+        key: state.pageKey,
+        child: const SettingsScreen(),
       ),
     ),
   ],

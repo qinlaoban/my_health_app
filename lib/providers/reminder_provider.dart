@@ -52,6 +52,14 @@ class ReminderProvider extends ChangeNotifier {
     await prefs.setString(_prefsKey, raw);
   }
 
+  void replaceReminders(List<Reminder> list) {
+    _reminders
+      ..clear()
+      ..addAll(list);
+    notifyListeners();
+    _persist();
+  }
+
   void addReminder(Reminder reminder) {
     _reminders.add(reminder);
     notifyListeners();

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -183,13 +184,11 @@ class ProfileScreen extends StatelessWidget {
               },
             ),
             _buildMenuItem(
-              icon: Icons.notifications_outlined,
-              title: '提醒设置',
-              subtitle: '设置用药、运动、体检提醒',
+              icon: Icons.settings,
+              title: '设置',
+              subtitle: '主题、数据工具等',
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('提醒设置功能开发中...')),
-                );
+                GoRouter.of(context).push('/settings');
               },
             ),
             _buildMenuItem(

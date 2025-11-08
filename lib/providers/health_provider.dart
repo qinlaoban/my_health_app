@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HealthProvider extends ChangeNotifier {
+  static const _prefsHealthKey = 'health_records';
+  static const _prefsMedicalKey = 'medical_records';
+  bool _loaded = false;
   // 用户基本信息
   String _userName = '用户';
   int _age = 25;
@@ -35,12 +40,60 @@ class HealthProvider extends ChangeNotifier {
   void addHealthRecord(HealthRecord record) {
     _healthRecords.add(record);
     notifyListeners();
+    _persist();
   }
   
   // 添加医疗记录
   void addMedicalRecord(MedicalRecord record) {
     _medicalRecords.add(record);
     notifyListeners();
+    _persist();
+  }
+
+  void replaceHealthRecords(List<HealthRecord> list) {
+    _healthRecords = List.from(list);
+    notifyListeners();
+    _persist();
+  }
+
+  void replaceMedicalRecords(List<MedicalRecord> list) {
+    _medicalRecords = List.from(list);
+    notifyListeners();
+    _persist();
+  }
+
+  Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final healthJson = prefs.getString(_prefsHealthKey);
+    final medicalJson = prefs.getString(_prefsMedicalKey);
+
+    if (healthJson != null) {
+      final List<dynamic> list = jsonDecode(healthJson);
+      _healthRecords = list
+          .map((e) => HealthRecord.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+
+    if (medicalJson != null) {
+      final List<dynamic> list = jsonDecode(medicalJson);
+      _medicalRecords = list
+          .map((e) => MedicalRecord.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+
+    _loaded = true;
+    notifyListeners();
+  }
+
+  Future<void> _persist() async {
+    if (!_loaded) return;
+    final prefs = await SharedPreferences.getInstance();
+    final healthJson =
+        jsonEncode(_healthRecords.map((e) => e.toJson()).toList());
+    final medicalJson =
+        jsonEncode(_medicalRecords.map((e) => e.toJson()).toList());
+    await prefs.setString(_prefsHealthKey, healthJson);
+    await prefs.setString(_prefsMedicalKey, medicalJson);
   }
 }
 
@@ -63,6 +116,28 @@ class HealthRecord {
     this.weight,
     this.notes,
   });
+
+  Map<String, dynamic> toJson() => {
+        'date': date.toIso8601String(),
+        'bloodPressureSystolic': bloodPressureSystolic,
+        'bloodPressureDiastolic': bloodPressureDiastolic,
+        'heartRate': heartRate,
+        'bloodSugar': bloodSugar,
+        'weight': weight,
+        'notes': notes,
+      };
+
+  factory HealthRecord.fromJson(Map<String, dynamic> json) => HealthRecord(
+        date: DateTime.parse(json['date'] as String),
+        bloodPressureSystolic:
+            (json['bloodPressureSystolic'] as num?)?.toDouble(),
+        bloodPressureDiastolic:
+            (json['bloodPressureDiastolic'] as num?)?.toDouble(),
+        heartRate: (json['heartRate'] as num?)?.toDouble(),
+        bloodSugar: (json['bloodSugar'] as num?)?.toDouble(),
+        weight: (json['weight'] as num?)?.toDouble(),
+        notes: json['notes'] as String?,
+      );
 }
 
 // 医疗记录模型
@@ -82,4 +157,24 @@ class MedicalRecord {
     this.hospital,
     this.medications,
   });
+
+  Map<String, dynamic> toJson() => {
+        'date': date.toIso8601String(),
+        'title': title,
+        'description': description,
+        'doctor': doctor,
+        'hospital': hospital,
+        'medications': medications,
+      };
+
+  factory MedicalRecord.fromJson(Map<String, dynamic> json) => MedicalRecord(
+        date: DateTime.parse(json['date'] as String),
+        title: json['title'] as String,
+        description: json['description'] as String,
+        doctor: json['doctor'] as String?,
+        hospital: json['hospital'] as String?,
+        medications: (json['medications'] as List?)
+            ?.map((e) => e as String)
+            .toList(),
+      );
 }
