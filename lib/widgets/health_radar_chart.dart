@@ -812,5 +812,7 @@ class RadarChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant RadarChartPainter oldDelegate) =>
+      oldDelegate.animationValue != animationValue ||
+      oldDelegate.healthData != healthData;
 }

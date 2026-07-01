@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 
 /// 提醒类型
 enum ReminderType { hydration, medication, exercise, sleep }

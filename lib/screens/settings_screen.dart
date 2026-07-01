@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/health_provider.dart';
+import '../models/health_models.dart';
 import '../providers/reminder_provider.dart';
 import '../models/reminder_models.dart';
 

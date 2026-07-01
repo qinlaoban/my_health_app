@@ -4,6 +4,7 @@ import 'providers/health_provider.dart';
 import 'providers/reminder_provider.dart';
 import 'providers/app_settings_provider.dart';
 import 'router/app_router.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   runApp(const MyHealthApp());
@@ -22,32 +23,9 @@ class MyHealthApp extends StatelessWidget {
       ],
       child: Consumer<AppSettingsProvider>(
         builder: (context, settings, _) => MaterialApp.router(
-          title: '我的健康',
-          theme: ThemeData(
-            primaryColor: const Color(0xFF0569F1),
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF0569F1),
-              brightness: Brightness.light,
-            ),
-            useMaterial3: true,
-            appBarTheme: const AppBarTheme(
-              backgroundColor: Color(0xFF0569F1),
-              foregroundColor: Colors.white,
-              elevation: 0,
-            ),
-          ),
-          darkTheme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF0569F1),
-              brightness: Brightness.dark,
-            ),
-            useMaterial3: true,
-            appBarTheme: const AppBarTheme(
-              backgroundColor: Color(0xFF0B56C0),
-              foregroundColor: Colors.white,
-              elevation: 0,
-            ),
-          ),
+          title: '健康',
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
           themeMode: settings.themeMode,
           routerConfig: appRouter,
           debugShowCheckedModeBanner: false,

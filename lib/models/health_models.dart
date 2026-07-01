@@ -1,44 +1,88 @@
 import 'package:flutter/material.dart';
 
-// 健康数据模型
-class HealthData {
-  final DateTime timestamp;
-  final double value;
-  final String unit;
-  final HealthDataType type;
+// 健康记录模型（每条记录包含多个指标）
+class HealthRecord {
+  final DateTime date;
+  final double? bloodPressureSystolic;
+  final double? bloodPressureDiastolic;
+  final double? heartRate;
+  final double? bloodSugar;
+  final double? weight;
+  final String? notes;
 
-  const HealthData({
-    required this.timestamp,
-    required this.value,
-    required this.unit,
-    required this.type,
+  HealthRecord({
+    required this.date,
+    this.bloodPressureSystolic,
+    this.bloodPressureDiastolic,
+    this.heartRate,
+    this.bloodSugar,
+    this.weight,
+    this.notes,
   });
 
   Map<String, dynamic> toJson() => {
-    'timestamp': timestamp.toIso8601String(),
-    'value': value,
-    'unit': unit,
-    'type': type.name,
-  };
+        'date': date.toIso8601String(),
+        'bloodPressureSystolic': bloodPressureSystolic,
+        'bloodPressureDiastolic': bloodPressureDiastolic,
+        'heartRate': heartRate,
+        'bloodSugar': bloodSugar,
+        'weight': weight,
+        'notes': notes,
+      };
 
-  factory HealthData.fromJson(Map<String, dynamic> json) => HealthData(
-    timestamp: DateTime.parse(json['timestamp']),
-    value: json['value'].toDouble(),
-    unit: json['unit'],
-    type: HealthDataType.values.byName(json['type']),
-  );
+  factory HealthRecord.fromJson(Map<String, dynamic> json) => HealthRecord(
+        date: DateTime.parse(json['date'] as String),
+        bloodPressureSystolic:
+            (json['bloodPressureSystolic'] as num?)?.toDouble(),
+        bloodPressureDiastolic:
+            (json['bloodPressureDiastolic'] as num?)?.toDouble(),
+        heartRate: (json['heartRate'] as num?)?.toDouble(),
+        bloodSugar: (json['bloodSugar'] as num?)?.toDouble(),
+        weight: (json['weight'] as num?)?.toDouble(),
+        notes: json['notes'] as String?,
+      );
 }
 
-enum HealthDataType {
-  steps,
-  heartRate,
-  bloodPressure,
-  weight,
-  sleep,
-  bloodGlucose,
+// 医疗记录模型
+class MedicalRecord {
+  final DateTime date;
+  final String title;
+  final String description;
+  final String? doctor;
+  final String? hospital;
+  final List<String>? medications;
+
+  MedicalRecord({
+    required this.date,
+    required this.title,
+    required this.description,
+    this.doctor,
+    this.hospital,
+    this.medications,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'date': date.toIso8601String(),
+        'title': title,
+        'description': description,
+        'doctor': doctor,
+        'hospital': hospital,
+        'medications': medications,
+      };
+
+  factory MedicalRecord.fromJson(Map<String, dynamic> json) => MedicalRecord(
+        date: DateTime.parse(json['date'] as String),
+        title: json['title'] as String,
+        description: json['description'] as String,
+        doctor: json['doctor'] as String?,
+        hospital: json['hospital'] as String?,
+        medications: (json['medications'] as List?)
+            ?.map((e) => e as String)
+            .toList(),
+      );
 }
 
-// 健康气泡数据模型
+// 健康气泡数据模型（用于散点图）
 class HealthBubble {
   final String name;
   final String value;
@@ -57,36 +101,4 @@ class HealthBubble {
     this.size = 1.0,
     this.color = Colors.blue,
   });
-}
-
-// 用户健康档案
-class UserHealthProfile {
-  final String id;
-  final String name;
-  final int age;
-  final double height;
-  final double weight;
-  final String gender;
-  final List<String> medicalConditions;
-  final List<String> medications;
-
-  const UserHealthProfile({
-    required this.id,
-    required this.name,
-    required this.age,
-    required this.height,
-    required this.weight,
-    required this.gender,
-    this.medicalConditions = const [],
-    this.medications = const [],
-  });
-
-  double get bmi => weight / ((height / 100) * (height / 100));
-
-  String get bmiCategory {
-    if (bmi < 18.5) return '偏瘦';
-    if (bmi < 24) return '正常';
-    if (bmi < 28) return '超重';
-    return '肥胖';
-  }
 }

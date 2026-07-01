@@ -1,21 +1,34 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/health_models.dart';
+import '../services/health_service.dart';
 
 class HealthProvider extends ChangeNotifier {
   static const _prefsHealthKey = 'health_records';
   static const _prefsMedicalKey = 'medical_records';
+  final HealthService _healthService = HealthService();
   bool _loaded = false;
+  bool _healthKitAvailable = false;
+
   // 用户基本信息
   String _userName = '用户';
   int _age = 25;
-  double _height = 170.0; // cm
-  double _weight = 65.0; // kg
-  
+  double _height = 170.0;
+  double _weight = 65.0;
+
   // 健康数据
   List<HealthRecord> _healthRecords = [];
   List<MedicalRecord> _medicalRecords = [];
-  
+
+  // HealthKit 实时数据缓存
+  int _todaySteps = 0;
+  double _sleepHours = 0;
+  double? _latestWeight;
+  double _heartRate = 0;
+  Map<String, double?> _bloodPressure = {'systolic': null, 'diastolic': null};
+  bool _isSyncing = false;
+
   // Getters
   String get userName => _userName;
   int get age => _age;
@@ -23,11 +36,16 @@ class HealthProvider extends ChangeNotifier {
   double get weight => _weight;
   List<HealthRecord> get healthRecords => _healthRecords;
   List<MedicalRecord> get medicalRecords => _medicalRecords;
-  
-  // BMI计算
+  int get todaySteps => _todaySteps;
+  double get sleepHours => _sleepHours;
+  double? get latestWeight => _latestWeight;
+  double get heartRate => _heartRate;
+  Map<String, double?> get bloodPressure => _bloodPressure;
+  bool get isSyncing => _isSyncing;
+  bool get healthKitAvailable => _healthKitAvailable;
+
   double get bmi => _weight / ((_height / 100) * (_height / 100));
-  
-  // 更新用户信息
+
   void updateUserInfo({String? name, int? age, double? height, double? weight}) {
     if (name != null) _userName = name;
     if (age != null) _age = age;
@@ -35,15 +53,13 @@ class HealthProvider extends ChangeNotifier {
     if (weight != null) _weight = weight;
     notifyListeners();
   }
-  
-  // 添加健康记录
+
   void addHealthRecord(HealthRecord record) {
     _healthRecords.add(record);
     notifyListeners();
     _persist();
   }
-  
-  // 添加医疗记录
+
   void addMedicalRecord(MedicalRecord record) {
     _medicalRecords.add(record);
     notifyListeners();
@@ -60,6 +76,48 @@ class HealthProvider extends ChangeNotifier {
     _medicalRecords = List.from(list);
     notifyListeners();
     _persist();
+  }
+
+  /// 从 HealthKit 同步数据
+  Future<void> syncFromHealthKit() async {
+    _isSyncing = true;
+    notifyListeners();
+
+    try {
+      _healthKitAvailable = await _healthService.initialize();
+      if (!_healthKitAvailable) {
+        _isSyncing = false;
+        notifyListeners();
+        return;
+      }
+
+      final results = await Future.wait([
+        _healthService.getTodaySteps(),
+        _healthService.getTodaySleepHours(),
+        _healthService.getLatestWeight(),
+        _healthService.getLatestBloodPressure(),
+      ]);
+
+      _todaySteps = results[0] as int;
+      _sleepHours = results[1] as double;
+      _latestWeight = results[2] as double?;
+      _bloodPressure = results[3] as Map<String, double?>;
+
+      // 创建一个新的健康记录
+      final now = DateTime.now();
+      addHealthRecord(HealthRecord(
+        date: now,
+        weight: _latestWeight,
+        bloodPressureSystolic: _bloodPressure['systolic'],
+        bloodPressureDiastolic: _bloodPressure['diastolic'],
+        notes: 'HealthKit 同步',
+      ));
+    } catch (e) {
+      debugPrint('HealthKit 同步失败: $e');
+    }
+
+    _isSyncing = false;
+    notifyListeners();
   }
 
   Future<void> load() async {
@@ -95,86 +153,4 @@ class HealthProvider extends ChangeNotifier {
     await prefs.setString(_prefsHealthKey, healthJson);
     await prefs.setString(_prefsMedicalKey, medicalJson);
   }
-}
-
-// 健康记录模型
-class HealthRecord {
-  final DateTime date;
-  final double? bloodPressureSystolic;
-  final double? bloodPressureDiastolic;
-  final double? heartRate;
-  final double? bloodSugar;
-  final double? weight;
-  final String? notes;
-  
-  HealthRecord({
-    required this.date,
-    this.bloodPressureSystolic,
-    this.bloodPressureDiastolic,
-    this.heartRate,
-    this.bloodSugar,
-    this.weight,
-    this.notes,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'date': date.toIso8601String(),
-        'bloodPressureSystolic': bloodPressureSystolic,
-        'bloodPressureDiastolic': bloodPressureDiastolic,
-        'heartRate': heartRate,
-        'bloodSugar': bloodSugar,
-        'weight': weight,
-        'notes': notes,
-      };
-
-  factory HealthRecord.fromJson(Map<String, dynamic> json) => HealthRecord(
-        date: DateTime.parse(json['date'] as String),
-        bloodPressureSystolic:
-            (json['bloodPressureSystolic'] as num?)?.toDouble(),
-        bloodPressureDiastolic:
-            (json['bloodPressureDiastolic'] as num?)?.toDouble(),
-        heartRate: (json['heartRate'] as num?)?.toDouble(),
-        bloodSugar: (json['bloodSugar'] as num?)?.toDouble(),
-        weight: (json['weight'] as num?)?.toDouble(),
-        notes: json['notes'] as String?,
-      );
-}
-
-// 医疗记录模型
-class MedicalRecord {
-  final DateTime date;
-  final String title;
-  final String description;
-  final String? doctor;
-  final String? hospital;
-  final List<String>? medications;
-  
-  MedicalRecord({
-    required this.date,
-    required this.title,
-    required this.description,
-    this.doctor,
-    this.hospital,
-    this.medications,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'date': date.toIso8601String(),
-        'title': title,
-        'description': description,
-        'doctor': doctor,
-        'hospital': hospital,
-        'medications': medications,
-      };
-
-  factory MedicalRecord.fromJson(Map<String, dynamic> json) => MedicalRecord(
-        date: DateTime.parse(json['date'] as String),
-        title: json['title'] as String,
-        description: json['description'] as String,
-        doctor: json['doctor'] as String?,
-        hospital: json['hospital'] as String?,
-        medications: (json['medications'] as List?)
-            ?.map((e) => e as String)
-            .toList(),
-      );
 }

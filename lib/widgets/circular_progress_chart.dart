@@ -398,5 +398,10 @@ class MultiColorCircularPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant MultiColorCircularPainter oldDelegate) =>
+      oldDelegate.progress != progress ||
+      oldDelegate.strokeWidth != strokeWidth ||
+      oldDelegate.scaleAnimation != scaleAnimation ||
+      oldDelegate.selectedSegment != selectedSegment ||
+      oldDelegate.segments != segments;
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import '../models/health_models.dart';
 
 class ScatterChartScreen extends StatefulWidget {
   const ScatterChartScreen({super.key});
@@ -712,22 +713,4 @@ class _ScatterChartScreenState extends State<ScatterChartScreen>
   }
 }
 
-class HealthBubble {
-  final String name;
-  final String value;
-  final String impact;
-  final Color color;
-  final double x;
-  final double y;
-  final double size;
 
-  HealthBubble({
-    required this.name,
-    required this.value,
-    required this.impact,
-    required this.color,
-    required this.x,
-    required this.y,
-    required this.size,
-  });
-}

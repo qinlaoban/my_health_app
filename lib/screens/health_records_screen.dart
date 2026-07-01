@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'widgets/heart_rate_chart.dart';
-import 'widgets/health_metric_card.dart';
-import '../services/health_service.dart';
+import '../providers/health_provider.dart';
+import '../theme/app_theme.dart';
 
 class HealthRecordsScreen extends StatefulWidget {
   const HealthRecordsScreen({super.key});
@@ -12,60 +12,23 @@ class HealthRecordsScreen extends StatefulWidget {
 }
 
 class _HealthRecordsScreenState extends State<HealthRecordsScreen> {
-  final HealthService _healthService = HealthService();
-  
-  int _steps = 0;
-  double _sleepHours = 0;
-  double? _weight;
-  Map<String, double?> _bloodPressure = {'systolic': null, 'diastolic': null};
-  bool _isLoading = true;
-
   @override
   void initState() {
     super.initState();
-    _loadHealthData();
+    _loadData();
   }
 
-  Future<void> _loadHealthData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // 初始化HealthKit
-      await _healthService.initialize();
-      
-      // 并行获取所有健康数据
-      final results = await Future.wait([
-        _healthService.getTodaySteps(),
-        _healthService.getTodaySleepHours(),
-        _healthService.getLatestWeight(),
-        _healthService.getLatestBloodPressure(),
-      ]);
-
-      setState(() {
-        _steps = results[0] as int;
-        _sleepHours = results[1] as double;
-        _weight = results[2] as double?;
-        _bloodPressure = results[3] as Map<String, double?>;
-        _isLoading = false;
-      });
-    } catch (e) {
-      print('加载健康数据失败: $e');
-      setState(() {
-        _isLoading = false;
-      });
+  Future<void> _loadData() async {
+    final provider = context.read<HealthProvider>();
+    if (!provider.healthKitAvailable) {
+      await provider.syncFromHealthKit();
     }
   }
 
-  String _formatBloodPressure() {
-    final systolic = _bloodPressure['systolic'];
-    final diastolic = _bloodPressure['diastolic'];
-    
-    if (systolic != null && diastolic != null) {
-      return '${systolic.toInt()}/${diastolic.toInt()}';
-    }
-    return '--/--';
+  String _formatBP(Map<String, double?> bp) {
+    final s = bp['systolic'];
+    final d = bp['diastolic'];
+    return s != null && d != null ? '${s.toInt()}/${d.toInt()}' : '--/--';
   }
 
   @override
@@ -73,135 +36,204 @@ class _HealthRecordsScreenState extends State<HealthRecordsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('健康数据'),
-        centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadHealthData,
+          Selector<HealthProvider, bool>(
+            selector: (_, p) => p.isSyncing,
+            builder: (context, isSyncing, _) => IconButton(
+              icon: isSyncing
+                  ? const SizedBox(
+                      width: 22, height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    )
+                  : const Icon(Icons.sync),
+              onPressed: isSyncing ? null : () => context.read<HealthProvider>().syncFromHealthKit(),
+            ),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadHealthData,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      body: Consumer<HealthProvider>(
+        builder: (context, hp, _) => RefreshIndicator(
+          onRefresh: () => hp.syncFromHealthKit(),
+          child: ListView(
+            padding: const EdgeInsets.symmetric(vertical: 4),
             children: [
-              const Text(
-                '心率变化',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+              _sectionHeader('心率趋势'),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Card(
+                  margin: EdgeInsets.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: RepaintBoundary(child: const HeartRateChart()),
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
-              const HeartRateChart(),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    '今日数据',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      TextButton.icon(
-                        onPressed: () {
-                          context.push('/health-charts');
-                        },
-                        icon: const Icon(Icons.bar_chart, size: 18),
-                        label: const Text('查看图表'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF0569F1),
-                        ),
-                      ),
-                      if (_isLoading)
-                        const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                children: [
-                  HealthMetricCard(
-                    title: '步数',
-                    value: _steps.toString(),
-                    unit: '步',
-                    icon: Icons.directions_walk,
-                    color: Colors.orange,
-                  ),
-                  HealthMetricCard(
-                    title: '睡眠',
-                    value: _sleepHours.toStringAsFixed(1),
-                    unit: '小时',
-                    icon: Icons.bedtime,
-                    color: Colors.purple,
-                  ),
-                  HealthMetricCard(
-                    title: '血压',
-                    value: _formatBloodPressure(),
-                    unit: 'mmHg',
-                    icon: Icons.favorite,
-                    color: Colors.red,
-                  ),
-                  HealthMetricCard(
-                    title: '体重',
-                    value: _weight?.toStringAsFixed(1) ?? '--',
-                    unit: 'kg',
-                    icon: Icons.monitor_weight,
-                    color: Colors.green,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              if (!_isLoading)
-                Card(
+              const SizedBox(height: 10),
+              _sectionHeader('今日数据'),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Card(
+                  margin: EdgeInsets.zero,
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(16),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'HealthKit 集成',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          '数据来源于 iOS HealthKit，包括步数、睡眠、体重和血压等健康指标。',
-                          style: TextStyle(color: Colors.grey),
+                        Row(
+                          children: [
+                            _metricMiniCard('步数', hp.todaySteps.toString(), '步', Icons.directions_walk, AppColors.steps),
+                            const SizedBox(width: 12),
+                            _metricMiniCard('睡眠', '${hp.sleepHours.toStringAsFixed(1)}', '小时', Icons.bedtime, AppColors.sleep),
+                          ],
                         ),
                         const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: _loadHealthData,
-                          icon: const Icon(Icons.sync),
-                          label: const Text('同步数据'),
+                        Row(
+                          children: [
+                            _metricMiniCard('血压', _formatBP(hp.bloodPressure), 'mmHg', Icons.favorite, AppColors.bloodPressure),
+                            const SizedBox(width: 12),
+                            _metricMiniCard('体重', hp.latestWeight?.toStringAsFixed(1) ?? '--', 'kg', Icons.monitor_weight, AppColors.weight),
+                          ],
                         ),
                       ],
                     ),
                   ),
                 ),
+              ),
+              const SizedBox(height: 10),
+              if (hp.healthKitAvailable)
+                _buildHealthKitCard(hp)
+              else
+                _buildHealthKitUnavailableCard(hp),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _metricMiniCard(String label, String value, String unit, IconData icon, Color color) {
+    return Expanded(
+      child: Row(
+        children: [
+          Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, size: 20, color: color),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(value, style: AppTypography.metricValue.copyWith(fontSize: 22, height: 1)),
+                  const SizedBox(width: 2),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Text(unit, style: AppTypography.caption),
+                  ),
+                ],
+              ),
+              Text(label, style: AppTypography.footnote),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHealthKitCard(HealthProvider hp) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader('HealthKit'),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF007AFF).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.apple, size: 22, color: Color(0xFF007AFF)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('HealthKit', style: AppTypography.body),
+                        const Text('数据已连接，可下拉刷新同步', style: AppTypography.footnote),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: hp.isSyncing ? null : () => hp.syncFromHealthKit(),
+                    child: Text(hp.isSyncing ? '同步中' : '同步', style: const TextStyle(color: Color(0xFF007AFF))),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHealthKitUnavailableCard(HealthProvider hp) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader('HealthKit'),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.secondaryText.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.apple, size: 22, color: AppColors.secondaryText),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('HealthKit 不可用', style: AppTypography.body),
+                        const Text('请使用 iOS 真机设备以同步健康数据', style: AppTypography.footnote),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _sectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+      child: Text(title, style: AppTypography.title2),
     );
   }
 }
